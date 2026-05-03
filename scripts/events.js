@@ -649,6 +649,14 @@ export function initEvents() {
     });
   });
 
+  window.addEventListener("siren:settings_saved", async () => {
+    const settings = getSirenSettings();
+    // 即使 music styles 为空也不会报错，安全热更新正则
+    await updateSirenRegex(settings?.music?.styles || {});
+    applyMusicBeautifyCss();
+    applyAmbienceAndKaraokeCss();
+  });
+
   setTimeout(() => {
     const settings = getSirenSettings();
     // 修改为：就算没有 music.styles 也要执行，保证 speak 正则能刷新
@@ -1186,11 +1194,6 @@ export function applyMusicBeautifyCss() {
 // 🌟 正则构建器：语音系统 (Speak)
 // ==========================================
 function buildSpeakRegexes() {
-  const settings = getSirenSettings();
-  const isBeautifyEnabled = settings?.tts?.beautify_enabled ?? true;
-
-  if (!isBeautifyEnabled) return [];
-
   const createRegexConfig = (tag, iconHtml) => {
     const capitalizedTag = tag.charAt(0).toUpperCase() + tag.slice(1);
 

@@ -537,62 +537,73 @@ function bindTtsGlobalUiEvents() {
   $("#siren-tts-save-global-btn")
     .off("click")
     .on("click", async function () {
-      const settings = getSirenSettings();
+      try {
+        const settings = getSirenSettings();
 
-      // 1. 获取并更新当前 UI 上的通用设置
-      const isEnabled = $("#siren-tts-enable").is(":checked");
-      const currentProvider = $("#siren-tts-provider").val();
+        // 1. 获取并更新当前 UI 上的通用设置
+        const isEnabled = $("#siren-tts-enable").is(":checked");
+        const currentProvider = $("#siren-tts-provider").val();
 
-      settings.tts.enabled = isEnabled;
-      settings.tts.provider = currentProvider;
+        settings.tts.enabled = isEnabled;
+        settings.tts.provider = currentProvider;
 
-      const histLen = parseInt($("#siren-tts-history-length").val());
-      settings.tts.history_length = isNaN(histLen) ? 30 : Math.max(0, histLen);
+        const histLen = parseInt($("#siren-tts-history-length").val());
+        settings.tts.history_length = isNaN(histLen)
+          ? 30
+          : Math.max(0, histLen);
 
-      settings.tts.clean_speak_tags_to_llm = $("#siren-tts-clean-prompt").is(
-        ":checked",
-      );
-
-      // 修复原版可能存在的 ID 抓取错误，分别抓取三个标签的替换符
-      settings.tts.clean_speak_tags_replacement =
-        $("#siren-tts-clean-replacement-speak").val() || "“”";
-      settings.tts.clean_phone_tags_replacement =
-        $("#siren-tts-clean-replacement-phone").val() || "“”";
-      settings.tts.clean_inner_tags_replacement =
-        $("#siren-tts-clean-replacement-inner").val() || "**";
-
-      // 2. 保存美化设置到暂存区
-      settings.tts.beautify_enabled = true;
-      settings.tts.beautify_list = tempTtsStyles;
-      settings.tts.beautify_current = currentTtsStyleName;
-      settings.tts.beautify_css = tempTtsStyles[currentTtsStyleName];
-
-      // 3. 执行通用存盘和样式注入 (传入 true 进行静默保存，不弹框，把提示机会留给子渠道)
-      saveSirenSettings(true);
-      applyTtsBeautifyCss();
-
-      // 4. 同步世界书的 TTS 条目状态
-      await syncTtsWorldbookEntries(currentProvider, isEnabled);
-
-      // 5. 核心逻辑：触发当前所选 Provider 的专属保存按钮！
-      if (currentProvider === "indextts") {
-        $("#siren-idx-global-save").trigger("click", [true]);
-      } else if (currentProvider === "minimax") {
-        $("#siren-mm-save-all").trigger("click", [true]);
-      } else if (currentProvider === "doubao") {
-        $("#siren-db-char-save").trigger("click", [true]);
-      } else if (currentProvider === "gptsovits") {
-        $("#siren-gsv-save-btn").trigger("click", [true]);
-      }
-
-      if (window.toastr) {
-        window.toastr.success(
-          `全量数据更新：通用设置及 [${currentProvider}] 配置已分流保存至全局与角色卡！`,
+        settings.tts.clean_speak_tags_to_llm = $("#siren-tts-clean-prompt").is(
+          ":checked",
         );
-      }
+        settings.tts.clean_speak_tags_replacement =
+          $("#siren-tts-clean-replacement-speak").val() || "“”";
+        settings.tts.clean_phone_tags_replacement =
+          $("#siren-tts-clean-replacement-phone").val() || "“”";
+        settings.tts.clean_inner_tags_replacement =
+          $("#siren-tts-clean-replacement-inner").val() || "**";
 
-      const $status = $("#siren-tts-preview-status");
-      $status.text("全局与渠道配置已同步！").css("color", "#10b981");
+        // 2. 保存美化设置到暂存区
+        settings.tts.beautify_enabled = true; // 从此锁定为 true 即可
+        settings.tts.beautify_list = tempTtsStyles;
+        settings.tts.beautify_current = currentTtsStyleName;
+        settings.tts.beautify_css = tempTtsStyles[currentTtsStyleName];
+
+        // 3. 执行通用存盘和样式注入
+        saveSirenSettings(true);
+        applyTtsBeautifyCss();
+
+        // 4. 同步世界书的 TTS 条目状态
+        await syncTtsWorldbookEntries(currentProvider, isEnabled);
+
+        // 🚀 安全修复：派发全局事件代替直接调用 updateSirenRegex，避免循环依赖或未加载导致的报错
+        window.dispatchEvent(new CustomEvent("siren:settings_saved"));
+
+        // 5. 核心逻辑：触发当前所选 Provider 的专属保存按钮！
+        if (currentProvider === "indextts") {
+          $("#siren-idx-global-save").trigger("click", [true]);
+        } else if (currentProvider === "minimax") {
+          $("#siren-mm-save-all").trigger("click", [true]);
+        } else if (currentProvider === "doubao") {
+          $("#siren-db-char-save").trigger("click", [true]);
+        } else if (currentProvider === "gptsovits") {
+          $("#siren-gsv-save-btn").trigger("click", [true]);
+        }
+
+        // 只要前面的代码不崩溃，这里必定会弹出 toastr！
+        if (window.toastr) {
+          window.toastr.success(
+            `全量数据更新：通用设置及 [${currentProvider}] 配置已分流保存至全局与角色卡！`,
+          );
+        }
+
+        const $status = $("#siren-tts-preview-status");
+        $status.text("全局与渠道配置已同步！").css("color", "#10b981");
+      } catch (error) {
+        console.error("[Siren Voice] 保存过程中发生错误:", error);
+        if (window.toastr) {
+          window.toastr.error("保存失败，请检查控制台报错！");
+        }
+      }
     });
 
   $("#siren-idx-char-save")
