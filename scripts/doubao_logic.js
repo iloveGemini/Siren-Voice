@@ -37,6 +37,13 @@ async function requestDoubaoTTSBlob(
     },
   };
 
+  if (model.includes("seed-icl-2.0")) {
+    payload.req_params.model = "seed-tts-2.0-expressive";
+  } else if (model.includes("seed-icl-1.0")) {
+    // 顺手兼容一下 1.0 的高音质版本
+    payload.req_params.model = "seed-tts-1.1";
+  }
+
   console.log(
     "%c🌊 [Siren Voice] 发起豆包 TTS 请求",
     "color: #3b82f6; font-weight: bold; font-size: 13px;",
@@ -141,16 +148,18 @@ function buildDoubaoPayloadParams(model, rawText, emotionPrompt) {
   const additionsObj = {};
 
   if (model.includes("seed-tts") && emotionPrompt) {
-    // 合成 2.0 逻辑
+    // 合成模型逻辑（使用 context_texts）
     additionsObj.context_texts = [emotionPrompt];
-  } else if (model.includes("seed-icl")) {
+  } else if (model.includes("seed-icl-2.0")) {
     // 复刻 2.0 逻辑
     additionsObj.use_tag_parser = true;
     if (emotionPrompt) {
-      finalText = `<cot text="${emotionPrompt}">${rawText}</cot>`;
+      finalText = `<cot text=${emotionPrompt}>${rawText}</cot>`;
     }
+  } else if (model.includes("seed-icl-1.0")) {
+    // 复刻 1.0 逻辑：直接无视 emotionPrompt，什么标签都不加，直接返回原始 finalText
+    console.log("[Siren Voice] 当前使用复刻1.0模型，已自动丢弃情绪标签");
   }
-  // 复刻 1.0 等其他模型不做处理，直接忽略 emotionPrompt 返回原始 finalText
 
   return { finalText, additionsObj };
 }
