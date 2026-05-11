@@ -722,8 +722,12 @@ export function initEvents() {
 
             // 1. 常规 DOM 获取尝试
             let rawText = "";
-            const hiddenSpan = speakTarget.querySelector(".siren-raw-text");
-            const visibleSpan = speakTarget.querySelector(".siren-speak-text");
+            const hiddenSpan = speakTarget.querySelector(
+              ".siren-raw-text, .custom-siren-raw-text",
+            );
+            const visibleSpan = speakTarget.querySelector(
+              ".siren-speak-text, .custom-siren-speak-text",
+            );
 
             if (hiddenSpan && hiddenSpan.textContent) {
               rawText = hiddenSpan.textContent;
@@ -743,13 +747,11 @@ export function initEvents() {
               if (floor !== null) {
                 let originalMarkdown = "";
 
-                // 👇 修复点：抛弃限制最新楼层的 -1，直接根据楼层 ID 从 ST 核心上下文中精准定位！
+                // 直接根据楼层 ID 从 ST 核心上下文中精准定位
                 const context = SillyTavern.getContext();
                 if (context && context.chat && context.chat[floor]) {
-                  // chat 数组的索引就是楼层号，.mes 就是未经渲染的原始文本
                   originalMarkdown = context.chat[floor].mes;
                 } else if (window.TavernHelper) {
-                  // 备用方案：去掉 -1，拿到完整记录再查
                   const msgs = window.TavernHelper.getChatMessages();
                   const msgObj =
                     msgs &&
@@ -758,16 +760,40 @@ export function initEvents() {
                 }
 
                 if (originalMarkdown) {
-                  // 🚀 核心修复 2：底层打捞器同步升级，支持防穿透与幻觉标签
+                  // 🌟 修复 2：获取当前点击的卡片在当前楼层内的物理索引
+                  const floorElement = speakTarget.closest(
+                    ".mes, [mesid], [data-mesid], [data-message-id]",
+                  );
+                  let targetIndex = -1;
+                  if (floorElement) {
+                    const allCards = Array.from(
+                      floorElement.querySelectorAll('[data-siren-speak="1"]'),
+                    );
+                    targetIndex = allCards.indexOf(speakTarget);
+                  }
+
                   const regex =
                     /<(speak|inner|phone)\b([^>]*)>((?:(?!<(?:speak|inner|phone)\b)[\s\S])*?)<\/(?:\1|(?!(?:i|b|u|s|em|strong|span|a|p|br)\b)[a-zA-Z0-9_-]+)>/gi;
                   let match;
+                  let currentMatchIndex = 0;
+
                   while ((match = regex.exec(originalMarkdown)) !== null) {
-                    // match[1] 是标签名, match[2] 是属性, match[3] 是文本
                     const currentAttrs = (match[2] || "").trim();
-                    if (!rawText || currentAttrs === rawAttrs.trim()) {
-                      rawText = match[3] || "";
+
+                    // 优先使用索引严格匹配，防属性相同的重复标签覆写
+                    if (targetIndex !== -1) {
+                      if (currentMatchIndex === targetIndex) {
+                        rawText = match[3] || "";
+                        break; // 🎯 关键修复：找到了必须立刻 break！
+                      }
+                    } else {
+                      // 兜底方案：如果因为某些原因拿不到 DOM 索引，遇到第一个属性匹配的就跳出
+                      if (currentAttrs === rawAttrs.trim()) {
+                        rawText = match[3] || "";
+                        break; // 🎯 关键修复：找到了必须立刻 break！
+                      }
                     }
+                    currentMatchIndex++;
                   }
                   console.log(
                     `[Siren Voice] 🎯 底层打捞成功！找到楼层 ${floor} 的真实文本:`,
@@ -1194,11 +1220,11 @@ function buildSpeakRegexes() {
       enabled: true,
       run_on_edit: true,
       scope: "global",
-      // 🚀 核心修复 1：防穿透 (绝不越界吃掉下一个同类标签) + 幻觉兼容 (支持如 </japan>, </chub> 闭合)
-      // 过滤掉常见的 HTML 标签防止误伤 (如 </i>, </br>)
       find_regex: `/<${tag}\\b([^>]*)>((?:(?!<(?:speak|inner|phone)\\b)[\\s\\S])*?)<\\/(?:${tag}|(?!(?:i|b|u|s|em|strong|span|a|p|br)\\b)[a-zA-Z0-9_-]+)>/gi`,
+
+      // 👇 主要修改这里：最外层加了一个 <span style="display: block; width: 100%;">，并在末尾加上 </span>
       replace_string:
-        `<span class="siren-speak-card" data-siren-speak="1" data-tag="${tag}" data-raw-attrs='$1' tabindex="0">
+        `<span style="display: block; width: 100%;"><span class="siren-speak-card" data-siren-speak="1" data-tag="${tag}" data-raw-attrs='$1' tabindex="0" style="display: flex; width: fit-content; margin-top: 6px; margin-bottom: 6px;">
     <span class="siren-btn-wrap siren-play-wrap" data-siren-action="play" title="播放">
         <i class="fa-solid fa-circle-play"></i>
     </span>
@@ -1213,7 +1239,8 @@ function buildSpeakRegexes() {
     <span class="siren-btn-wrap siren-regen-spinner-wrap" style="display: none;">
         <i class="fa-solid fa-spinner fa-spin"></i>
     </span>
-</span>`.replace(/\n\s+/g, ""),
+</span></span>`.replace(/\n\s+/g, ""), // 👈 注意这里也要多加一个 </span> 闭合外层标签
+
       source: {
         user_input: true,
         ai_output: true,

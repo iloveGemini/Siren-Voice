@@ -2,6 +2,7 @@ import { getIndexTtsHtml, bindIndexTtsEvents } from "./indextts.js";
 import { getMinimaxHtml, bindMinimaxEvents } from "./minimax.js";
 import { getDoubaoHtml, bindDoubaoEvents } from "./doubao.js";
 import { getGptSovitsHtml, bindGptSovitsEvents } from "./gpt-sovits.js";
+import { getVoxCpmHtml, bindVoxCpmEvents } from "./voxcpm.js";
 import { getSirenSettings, saveSirenSettings } from "./settings.js";
 import { compileSirenCss, syncTtsWorldbookEntries } from "./utils.js";
 import {
@@ -167,6 +168,7 @@ export function initTtsSettings() {
                     <select id="siren-tts-provider" class="siren-ext-select" style="max-width: 200px; border-color: #0ea5e9 !important; box-shadow: 0 0 10px rgba(14, 165, 233, 0.5) !important; outline: none; background-color: rgba(15, 23, 42, 0.8);">
                         <option value="indextts">Index-TTS 2</option>
                         <option value="gptsovits">GPT-SoVITS</option>
+                        <option value="voxcpm">VoxCPM 2</option>
                         <option value="doubao">豆包（火山引擎）</option>
                         <option value="minimax">MiniMax</option>
                     </select>
@@ -607,7 +609,10 @@ function bindTtsGlobalUiEvents() {
           $("#siren-db-char-save").trigger("click", [true]);
         } else if (currentProvider === "gptsovits") {
           $("#siren-gsv-save-btn").trigger("click", [true]);
+        } else if (currentProvider === "voxcpm") {
+          $("#siren-vox-global-save").trigger("click", [true]);
         }
+        await updateTtsGlobalMacros(currentProvider);
 
         // 只要前面的代码不崩溃，这里必定会弹出 toastr！
         if (window.toastr) {
@@ -685,6 +690,9 @@ function renderProviderSettings() {
   } else if (provider === "gptsovits") {
     container.html(getGptSovitsHtml());
     bindGptSovitsEvents();
+  } else if (provider === "voxcpm") {
+    container.html(getVoxCpmHtml());
+    bindVoxCpmEvents();
   } else {
     container.html(
       `<div style="text-align:center; padding: 20px; color:#64748b;">${provider} 设置界面构建中... 🚧</div>`,
@@ -692,7 +700,7 @@ function renderProviderSettings() {
   }
 }
 
-async function updateTtsGlobalMacros(provider) {
+export async function updateTtsGlobalMacros(provider) {
   const context = SillyTavern.getContext();
   const charId = context.characterId;
 
@@ -739,6 +747,10 @@ async function updateTtsGlobalMacros(provider) {
         .map((e) => e.emotion)
         .filter(Boolean)
         .join(", ");
+    } else if (provider === "voxcpm") {
+      const voices = charExt.siren_voice_tts_voxcpm?.voices || {};
+      currentVoice = Object.keys(voices).join(", ");
+      currentMood = "";
     }
 
     console.log(

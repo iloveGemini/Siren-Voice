@@ -835,6 +835,22 @@ export const defaultSettings = Object.freeze({
       repetition_penalty: 1.35,
       seed: -1,
     },
+    voxcpm: {
+      api_base: "http://127.0.0.1:8000",
+      api_key: "",
+      split_method: "punctuation",
+      chunk_min_len: 15,
+      chunk_max_len: 60,
+      norm_text: false,
+      denoise: false,
+      retry_badcase: true,
+      cfg_value: 2.0,
+      inference_timesteps: 10,
+      min_len: 2,
+      max_len: 4096,
+      retry_badcase_max_times: 3,
+      retry_badcase_ratio_threshold: 6.0,
+    },
   },
   mixer: {
     volume: {

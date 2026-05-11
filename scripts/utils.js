@@ -270,6 +270,7 @@ export async function syncTtsWorldbookEntries(selectedProvider, isTtsEnabled) {
     gptsovits: "GPT-SoVITS",
     doubao: "豆包",
     minimax: "minimax",
+    voxcpm: "VoxCPM", // <--- 🌟 新增这一行：将 voxcpm 映射到世界书条目 TTS-VoxCPM
   };
   const targetEntryName = isTtsEnabled
     ? `TTS-${providerToEntrySuffix[selectedProvider]}`

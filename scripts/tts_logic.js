@@ -2,6 +2,7 @@ import { requestIndexTtsGeneration } from "./indextts_logic.js";
 import { generateMinimaxAudioBlob } from "./minimax_logic.js";
 import { generateDoubaoProductionAudioBlob } from "./doubao_logic.js";
 import { generateGptSovitsAudio } from "./gptsovits_logic.js";
+import { generateVoxCpmAudioBlob } from "./voxcpm_logic.js";
 import {
   parseSpeakTags,
   stripParentheticalAsides,
@@ -332,6 +333,16 @@ export async function fetchTtsBlobProvider(
         );
         break;
 
+      case "voxcpm":
+        const voxSettings = ttsSettings?.voxcpm || ttsSettings;
+        const preloadVoxText = apiPayloadText.replace(/【([^】]+)】/g, "[$1]");
+
+        blob = await generateVoxCpmAudioBlob(
+          { ...speakObj, text: preloadVoxText }, // 传入转换括号后的文本
+          voxSettings,
+        );
+        break;
+
       default:
         console.warn(`[Siren Voice][预加载] 暂不支持该引擎: ${provider}`);
         return null;
@@ -378,7 +389,8 @@ export async function preloadTtsForTimeline(
     switch (provider) {
       case "indextts":
       case "doubao":
-      case "gptsovits": // 👈 🌟 核心修复：把 gptsovits 移到这里，强制排队！
+      case "gptsovits":
+      case "voxcpm":
         // 串行生成 (按时间轴顺序，一句话生成完，再请求下一句)
         for (let i = 0; i < timeline.length; i++) {
           const node = timeline[i];
