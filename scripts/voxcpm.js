@@ -192,7 +192,7 @@ export function getVoxCpmHtml() {
 
                 <div class="siren-vox-param-card">
                     <label style="font-size: 0.85em; color: #94a3b8;" title="1.0-3.0">引导强度 (CFG)</label>
-                    <input type="number" id="siren-vox-param-cfg" class="siren-vox-param-num" value="2.0" step="0.1" min="1.0" max="5.0">
+                    <input type="number" id="siren-vox-param-cfg" class="siren-vox-param-num" value="2.5" step="0.1" min="1.0" max="5.0">
                 </div>
 
                 <div class="siren-vox-param-card">
@@ -239,7 +239,7 @@ export function getVoxCpmHtml() {
             </div>
 
             <div style="margin-bottom: 10px;">
-                <input type="text" id="siren-vox-test-instruction" class="siren-ext-input" style="width: 100%;" placeholder="输入控制指令(如: 悲伤地 / 年轻女性, 愤怒)">
+                <input type="text" id="siren-vox-test-instruction" class="siren-ext-input" style="width: 100%;" placeholder="输入控制指令(如: 悲伤, 愤怒, 语速稍快等)">
                 <small style="color: #64748b; margin-top: 4px; display: block;">* 若选择具体角色，此处仅填情绪(如: 激动地)；若自定义，可填音色+情绪(如: 成熟男性, 疑惑地)。</small>
             </div>
             
@@ -316,14 +316,14 @@ export function loadVoxCpmData() {
   );
   $("#siren-vox-param-chunk-min").val(ttsSettings.chunk_min_len ?? 15);
   $("#siren-vox-param-chunk-max").val(ttsSettings.chunk_max_len ?? 60);
-  $("#siren-vox-param-norm").prop("checked", ttsSettings.norm_text || false);
+  $("#siren-vox-param-norm").prop("checked", ttsSettings.norm_text || true);
   $("#siren-vox-param-denoise").prop("checked", ttsSettings.denoise || false);
   $("#siren-vox-param-retry").prop(
     "checked",
     ttsSettings.retry_badcase ?? true,
   );
 
-  $("#siren-vox-param-cfg").val(ttsSettings.cfg_value ?? 2.0);
+  $("#siren-vox-param-cfg").val(ttsSettings.cfg_value ?? 2.5);
   $("#siren-vox-param-steps").val(ttsSettings.inference_timesteps ?? 10);
   $("#siren-vox-param-minlen").val(ttsSettings.min_len ?? 2);
   $("#siren-vox-param-maxlen").val(ttsSettings.max_len ?? 4096);
@@ -590,7 +590,7 @@ export function bindVoxCpmEvents() {
       tts.denoise = $("#siren-vox-param-denoise").is(":checked");
       tts.retry_badcase = $("#siren-vox-param-retry").is(":checked");
 
-      tts.cfg_value = parseFloat($("#siren-vox-param-cfg").val()) || 2.0;
+      tts.cfg_value = parseFloat($("#siren-vox-param-cfg").val()) || 2.5;
       tts.inference_timesteps =
         parseInt($("#siren-vox-param-steps").val()) || 10;
       tts.min_len = parseInt($("#siren-vox-param-minlen").val()) || 2;

@@ -241,6 +241,34 @@ async function handleInlineMusicPlay(
 }
 
 /**
+ * ⚡ 高性能同步文本清洗器
+ * 必须在浏览器下一次 Paint 前执行，杜绝闪烁
+ */
+function fastCleanSpeakText(card) {
+  const textSpan = card.querySelector(
+    ".siren-speak-text, .custom-siren-speak-text",
+  );
+  const rawSpan = card.querySelector(".siren-raw-text, .custom-siren-raw-text");
+
+  if (textSpan && rawSpan) {
+    const rawHtml = rawSpan.innerHTML || "";
+    let cleanDisplay = rawHtml.replace(/\{\{[\s\S]*?\}\}/g, "").trim();
+
+    // 抹除多余的 HTML 样式标签（解决闪烁时出现的错误斜体/粗体样式）
+    cleanDisplay = cleanDisplay.replace(/<\/?(?!br\b)[a-z0-9]+[^>]*>/gi, "");
+
+    // 依赖你的 utils 工具函数剥离括号与标点
+    cleanDisplay = stripParentheticalAsides(cleanDisplay);
+    cleanDisplay = stripWrappingPunctuation(cleanDisplay);
+
+    // 仅当文本真的不同才触发重绘，节省性能
+    if (textSpan.innerHTML !== cleanDisplay) {
+      textSpan.innerHTML = cleanDisplay;
+    }
+  }
+}
+
+/**
  * 绑定语音条 DOM 事件 (基于隐藏节点数据源)，并动态清洗 UI 显示文本
  */
 function bindInlineSpeakCards(root = document) {
@@ -248,6 +276,8 @@ function bindInlineSpeakCards(root = document) {
   if (!cards.length) return;
 
   cards.forEach((card) => {
+    if (card.dataset.sirenBound === "1") return;
+
     // 👇 双向兼容 ST 的 custom- 净化器前缀
     const textSpan = card.querySelector(
       ".siren-speak-text, .custom-siren-speak-text",
@@ -341,15 +371,48 @@ function bindInlineMusicCards(root = document) {
 function initCardObserver() {
   if (sirenCardObserver) return;
 
-  sirenCardObserver = new MutationObserver(() => {
+  // 1. 修改：接收 mutations 变动记录
+  sirenCardObserver = new MutationObserver((mutations) => {
+    // 🌟 核心修复：同步拦截流式传输闪烁！
+    // 遍历变动，只要发现 ST 塞入了新的语音卡片，在浏览器把生肉画到屏幕前，当场清洗！
+    let needsSyncClean = false;
+    for (const mutation of mutations) {
+      if (mutation.type === "childList") {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType === 1) {
+            // ELEMENT_NODE
+            if (
+              node.matches?.('[data-siren-speak="1"]') ||
+              node.querySelector?.('[data-siren-speak="1"]')
+            ) {
+              needsSyncClean = true;
+              break;
+            }
+          }
+        }
+      } else if (mutation.type === "characterData") {
+        // 兜底：兼容 ST 直接修改文本节点的情况
+        if (
+          mutation.target.parentElement?.closest?.('[data-siren-speak="1"]')
+        ) {
+          needsSyncClean = true;
+        }
+      }
+      if (needsSyncClean) break;
+    }
+
+    // 在微任务阶段立刻打断施法，同步清洗，彻底消除 100ms 的视觉差
+    if (needsSyncClean) {
+      bindInlineSpeakCards(document);
+    }
+
+    // --- 下面保持你原有的逻辑完全不变 ---
     // 🌟 1. 核心逻辑：只要 DOM 发生变化，立刻掐断上一次还没来得及执行的计时器
     if (observerTimeout) {
       clearTimeout(observerTimeout);
     }
 
-    // 🌟 2. 重新开始 100 毫秒的倒计时。
-    // 如果 100 毫秒内 AI 继续吐字（DOM 继续变化），计时器又会被上一步掐断并重置。
-    // 直到 AI 吐字停顿超过 100 毫秒（比如一段话输出完了，或者网络波动卡了一下），下面的代码才会真正执行。
+    // 🌟 2. 重新开始 100 毫秒的倒计时...
     observerTimeout = setTimeout(() => {
       const settings = getSirenSettings();
       const bStyle = settings?.ambience?.card_style;

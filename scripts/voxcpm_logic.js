@@ -104,11 +104,11 @@ export async function generateVoxCpmAudioBlob(speakObj, ttsSettings) {
     chunk_min_len: ttsSettings.chunk_min_len ?? 15,
     chunk_max_len: ttsSettings.chunk_max_len ?? 60,
     // 原有的其他参数保持不变
-    cfg_value: ttsSettings.cfg_value ?? 2.0,
+    cfg_value: ttsSettings.cfg_value ?? 2.5,
     inference_timesteps: ttsSettings.inference_timesteps ?? 10,
     min_len: ttsSettings.min_len ?? 2,
     max_len: ttsSettings.max_len ?? 4096,
-    normalize: ttsSettings.norm_text ?? false,
+    normalize: ttsSettings.norm_text ?? true,
     denoise: ttsSettings.denoise ?? false,
     retry_badcase: ttsSettings.retry_badcase ?? true,
     retry_badcase_max_times: ttsSettings.retry_badcase_max_times ?? 3,
