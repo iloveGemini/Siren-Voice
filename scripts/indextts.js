@@ -378,6 +378,9 @@ export function loadCharacterTtsList() {
     const charConfig = getCharacterTtsConfig(context.characterId);
     if (charConfig && charConfig.voices) {
       Object.entries(charConfig.voices).forEach(([charName, voicePath]) => {
+        // 👇 新增：必须拦截 null，防止被标记删除的数据在 UI 上渲染出空行
+        if (!voicePath) return;
+
         const $row = $(charRowHtml);
         $row.find('input[placeholder="角色名"]').val(charName);
         $row.find(".siren-idx-audio-input").val(voicePath);
@@ -1267,8 +1270,20 @@ export function bindIndexTtsEvents() {
       context.characterId !== undefined &&
       context.characterId !== null
     ) {
+      // 👇 新增：获取旧的扩展数据，注入 null 破坏幽灵缓存
+      const charExt =
+        context.characters[context.characterId].data.extensions
+          ?.siren_voice_tts || {};
+      const oldVoices = charExt.voices || {};
+
+      for (const oldChar of Object.keys(oldVoices)) {
+        if (voiceMap[oldChar] === undefined) {
+          voiceMap[oldChar] = null; // 提交 null 以覆盖旧的深拷贝缓存
+        }
+      }
+
       try {
-        // 【修改点 1】：传入 silent = true，抑制角色卡保存的内置弹窗
+        // 直接调用 settings.js 提供的通用保存函数
         await saveToCharacterCard(
           "siren_voice_tts",
           {

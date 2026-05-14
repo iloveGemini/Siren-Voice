@@ -630,47 +630,6 @@ function bindTtsGlobalUiEvents() {
         }
       }
     });
-
-  $("#siren-idx-char-save")
-    .off("click")
-    .on("click", async function () {
-      const context = SillyTavern.getContext();
-      const { writeExtensionField, characterId } = context;
-
-      // 拦截异常状态：群聊或未选中角色
-      if (characterId === undefined || characterId === null) {
-        if (window.toastr)
-          window.toastr.warning(
-            "当前未选中任何角色（或处于群聊中），无法保存到角色卡！",
-          );
-        return;
-      }
-
-      // 收集 DOM 中所有的角色行数据
-      const voiceMap = {};
-      $("#siren-idx-char-list .siren-ext-setting-row").each(function () {
-        const charName = $(this).find("input").eq(0).val().trim();
-        const voicePath = $(this).find("input").eq(1).val().trim();
-
-        if (charName && voicePath) {
-          voiceMap[charName] = voicePath;
-        }
-      });
-
-      try {
-        // 将数据写入 ST 角色卡的 extensions 字段下
-        await writeExtensionField(characterId, "siren_voice_tts", {
-          voices: voiceMap,
-        });
-
-        if (window.toastr)
-          window.toastr.success("角色音色配置已成功写入当前角色卡！");
-        console.log("[Siren Voice] 写入角色卡成功:", voiceMap);
-      } catch (err) {
-        console.error("[Siren Voice] 写入角色卡失败:", err);
-        if (window.toastr) window.toastr.error("写入角色卡失败！");
-      }
-    });
 }
 
 function renderProviderSettings() {
