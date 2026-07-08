@@ -28,6 +28,8 @@ export function initAmbienceSettings() {
     localAmbienceState.libraries = { default: [] };
   if (typeof localAmbienceState.auto_play === "undefined")
     localAmbienceState.auto_play = true;
+  if (typeof localAmbienceState.skip_tts === "undefined")
+    localAmbienceState.skip_tts = true;
   if (typeof localAmbienceState.custom_end_tags === "undefined")
     localAmbienceState.custom_end_tags = "";
 
@@ -164,6 +166,14 @@ export function initAmbienceSettings() {
                         <span style="color: #e2e8f0; font-size: 14px;">全局自动播放 (Auto Play)</span>
                         <label class="siren-toggle-switch">
                             <input type="checkbox" id="siren-ambience-auto-play">
+                            <span class="siren-toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <span style="color: #e2e8f0; font-size: 14px;">Skip scene TTS</span>
+                        <label class="siren-toggle-switch">
+                            <input type="checkbox" id="siren-ambience-skip-tts">
                             <span class="siren-toggle-slider"></span>
                         </label>
                     </div>
@@ -405,6 +415,8 @@ function renderAmbienceAll() {
     localAmbienceState.enabled;
   document.getElementById("siren-ambience-auto-play").checked =
     localAmbienceState.auto_play;
+  document.getElementById("siren-ambience-skip-tts").checked =
+    localAmbienceState.skip_tts;
   document.getElementById("siren-ambience-custom-end-tags").value =
     localAmbienceState.custom_end_tags || "";
   document.getElementById(
@@ -733,6 +745,12 @@ function bindAmbienceEvents() {
       );
       if (wrapper)
         wrapper.style.display = localAmbienceState.auto_play ? "flex" : "none";
+    });
+
+  document
+    .getElementById("siren-ambience-skip-tts")
+    .addEventListener("change", (e) => {
+      localAmbienceState.skip_tts = e.target.checked;
     });
 
   document

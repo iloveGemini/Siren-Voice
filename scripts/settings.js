@@ -5,6 +5,7 @@ export const defaultSettings = Object.freeze({
   ambience: {
     enabled: true,
     auto_play: true, // 🌟 新增：全局自动播放
+    skip_tts: true,
     custom_end_tags: "", // 🌟 新增：自定义触发标签
     fade_duration: 2.0, // 平滑过渡时间（秒）
     start_tag: "<content>",

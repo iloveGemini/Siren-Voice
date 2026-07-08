@@ -781,23 +781,34 @@ export function initEvents() {
             e.stopPropagation();
             console.log(`[Siren Voice] 🦅 捕获阶段拦截成功 (语音-${action})！`);
 
-            const rawAttrs = speakTarget.getAttribute("data-raw-attrs") || "";
+            let rawAttrs = speakTarget.getAttribute("data-raw-attrs") || "";
+            let tagType = speakTarget.getAttribute("data-tag") || "speak";
+            const originalSpeakMatch = getOriginalSpeakMatch(speakTarget);
+
+            if (originalSpeakMatch) {
+              rawAttrs = originalSpeakMatch.attrs;
+              tagType = originalSpeakMatch.tag;
+            }
 
             // 1. 常规 DOM 获取尝试
             let rawText = "";
-            const hiddenSpan = speakTarget.querySelector(
-              ".siren-raw-text, .custom-siren-raw-text",
-            );
-            const visibleSpan = speakTarget.querySelector(
-              ".siren-speak-text, .custom-siren-speak-text",
-            );
-
-            if (hiddenSpan && hiddenSpan.textContent) {
-              rawText = hiddenSpan.textContent;
-            } else if (visibleSpan && visibleSpan.textContent) {
-              rawText = visibleSpan.textContent;
+            if (originalSpeakMatch) {
+              rawText = originalSpeakMatch.text;
             } else {
-              rawText = speakTarget.getAttribute("data-raw-text") || "";
+              const hiddenSpan = speakTarget.querySelector(
+                ".siren-raw-text, .custom-siren-raw-text",
+              );
+              const visibleSpan = speakTarget.querySelector(
+                ".siren-speak-text, .custom-siren-speak-text",
+              );
+
+              if (hiddenSpan && hiddenSpan.textContent) {
+                rawText = hiddenSpan.textContent;
+              } else if (visibleSpan && visibleSpan.textContent) {
+                rawText = visibleSpan.textContent;
+              } else {
+                rawText = speakTarget.getAttribute("data-raw-text") || "";
+              }
             }
 
             // 💥 2. 【终极核武器：绕过 DOM 幽灵，直接从 ST 聊天记录底层打捞】💥
@@ -881,8 +892,6 @@ export function initEvents() {
             cleanText = stripWrappingPunctuation(cleanText);
 
             // 🌟 从 DOM 读取具体的标签类型，默认为 speak
-            const tagType = speakTarget.getAttribute("data-tag") || "speak";
-
             console.log(
               "【Siren Voice 调试 2】组装进 speakObj 的文本 (缓存键):",
               baseText,
@@ -1430,6 +1439,58 @@ function parseRawSpeakAttrs(rawAttrs) {
     attrs[match[1]] = match[2];
   }
   return attrs;
+}
+
+function getOriginalSpeakMatch(cardElement) {
+  const floor = getMessageIdFromElement(cardElement);
+  if (floor === null) return null;
+
+  let originalMarkdown = "";
+  const context = SillyTavern.getContext();
+  if (context?.chat?.[floor]) {
+    originalMarkdown = context.chat[floor].mes;
+  } else if (window.TavernHelper) {
+    const msgs = window.TavernHelper.getChatMessages();
+    const msgObj =
+      msgs && msgs.find((m) => Number(m.message_id) === Number(floor));
+    if (msgObj) originalMarkdown = msgObj.message;
+  }
+
+  if (!originalMarkdown) return null;
+
+  const floorElement = cardElement.closest(
+    ".mes, [mesid], [data-mesid], [data-message-id]",
+  );
+  let targetIndex = -1;
+  if (floorElement) {
+    const allCards = Array.from(
+      floorElement.querySelectorAll('[data-siren-speak="1"]'),
+    );
+    targetIndex = allCards.indexOf(cardElement);
+  }
+
+  const rawAttrs = cardElement.getAttribute("data-raw-attrs") || "";
+  const regex =
+    /<(speak|inner|phone)\b([^>]*)>((?:(?!<(?:speak|inner|phone)\b)[\s\S])*?)<\/(?:\1|(?!(?:i|b|u|s|em|strong|span|a|p|br)\b)[a-zA-Z0-9_-]+)>/gi;
+  let match;
+  let currentMatchIndex = 0;
+
+  while ((match = regex.exec(originalMarkdown)) !== null) {
+    const currentAttrs = (match[2] || "").trim();
+    if (
+      (targetIndex !== -1 && currentMatchIndex === targetIndex) ||
+      (targetIndex === -1 && currentAttrs === rawAttrs.trim())
+    ) {
+      return {
+        tag: (match[1] || "speak").toLowerCase(),
+        attrs: match[2] || "",
+        text: match[3] || "",
+      };
+    }
+    currentMatchIndex++;
+  }
+
+  return null;
 }
 
 /**

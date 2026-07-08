@@ -62,6 +62,16 @@ let activeSceneState = {
   lastNow: 0,
 };
 
+function shouldSkipSceneTts() {
+  return getSirenSettings()?.ambience?.skip_tts === true;
+}
+
+function getPlayableTimeline(timeline) {
+  return shouldSkipSceneTts()
+    ? timeline.filter((node) => node.type !== "tts")
+    : timeline;
+}
+
 let activeKaraokeRaf = null;
 
 // 🌟 新增：监听混音台滑块拖动，实时修改当前正在播放的音频音量
@@ -536,7 +546,8 @@ export async function injectScenePlayButtons() {
     try {
       parsedTimeline = parseMessageTimeline(floorId); // 👈 🌟 修复点 2：将解析结果赋值给外部变量（去掉原先这里的 const）
 
-      const hasAction = parsedTimeline.some((n) =>
+      const playableTimeline = getPlayableTimeline(parsedTimeline);
+      const hasAction = playableTimeline.some((n) =>
         ["ambience", "tts", "sfx"].includes(n.type),
       );
 
@@ -544,7 +555,7 @@ export async function injectScenePlayButtons() {
         return;
       }
 
-      const ttsNodes = parsedTimeline.filter((n) => n.type === "tts");
+      const ttsNodes = playableTimeline.filter((n) => n.type === "tts");
 
       if (ttsNodes.length === 0) {
         finalState = "ready";
@@ -593,7 +604,9 @@ export async function injectScenePlayButtons() {
     playBtn.title = "幻境氛围 (请求并播放)";
 
     // 👈 🌟 修复点 3：这里现在可以安全地拿到刚才解析的剧本并生成签名了
-    playBtn.dataset.signature = generateSignatureFromTimeline(parsedTimeline);
+    playBtn.dataset.signature = generateSignatureFromTimeline(
+      getPlayableTimeline(parsedTimeline),
+    );
 
     // 直接赋予最终图标和状态，消灭闪烁！
     if (finalState === "ready") {
@@ -654,7 +667,7 @@ export async function scanAndRefreshAllScenes() {
 
     try {
       // 解析剧本
-      const timeline = parseMessageTimeline(floorId);
+      const timeline = getPlayableTimeline(parseMessageTimeline(floorId));
       const hasAction = timeline.some((n) =>
         ["ambience", "tts", "sfx"].includes(n.type),
       );
@@ -722,7 +735,7 @@ async function refreshSceneButtonStatus(playBtn, regenBtn, floorId, chatId) {
   if (!actualPlayBtn) return;
 
   // 1. 解析当前楼层的剧本
-  const timeline = parseMessageTimeline(floorId);
+  const timeline = getPlayableTimeline(parseMessageTimeline(floorId));
 
   // 检查是否有实质动作，什么都没有就保持初始状态
   const hasAction = timeline.some((n) =>
@@ -827,7 +840,7 @@ async function handleSceneButtonClick(btn, mesNode, forceRegen = false) {
     btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="color: #f59e0b;"></i>`;
 
     try {
-      const timeline = parseMessageTimeline(floorId);
+      const timeline = getPlayableTimeline(parseMessageTimeline(floorId));
       const hasAction = timeline.some((n) =>
         ["ambience", "tts", "sfx"].includes(n.type),
       );
@@ -847,13 +860,15 @@ async function handleSceneButtonClick(btn, mesNode, forceRegen = false) {
       await preloadSfxForTimeline(timeline, floorId);
 
       // 并发/串行 预加载 TTS
-      await preloadTtsForTimeline(
+      if (!shouldSkipSceneTts()) {
+        await preloadTtsForTimeline(
         timeline,
         floorId,
         provider,
         ttsSettings,
         forceRegen,
-      );
+        );
+      }
 
       btn.sirenTtsBlobs = timeline
         .filter((n) => n.type === "tts")
@@ -875,7 +890,7 @@ async function handleSceneButtonClick(btn, mesNode, forceRegen = false) {
     btn.dataset.state = "playing";
     btn.innerHTML = `<i class="fa-solid fa-pause" style="color: #3b82f6;"></i>`;
 
-    const latestTimeline = parseMessageTimeline(floorId);
+    const latestTimeline = getPlayableTimeline(parseMessageTimeline(floorId));
     const { findExactTtsRecord } = await import("./db.js");
     const chatId = SillyTavern.getContext().chatId;
 
@@ -2060,7 +2075,7 @@ export async function handleMessageEditRevert(floorId) {
     }
 
     // 剔除宏变量干扰，比对核心签名
-    const timeline = parseMessageTimeline(floorId);
+    const timeline = getPlayableTimeline(parseMessageTimeline(floorId));
     const newSignature = generateSignatureFromTimeline(timeline);
     const oldSignature = playBtn?.dataset?.signature || newSignature;
 
@@ -2134,7 +2149,7 @@ async function processMessageEditRevert(floorId) {
     playBtn = mesNode.querySelector(".siren-scene-play-btn");
   }
 
-  const timeline = parseMessageTimeline(floorId);
+  const timeline = getPlayableTimeline(parseMessageTimeline(floorId));
   const newSignature = generateSignatureFromTimeline(timeline);
   const oldSignature = playBtn?.dataset?.signature || newSignature;
 
