@@ -139,25 +139,61 @@ export async function generateMinimaxAudioBlob(text, mood, config) {
         requestBody.voice_modify = modifyData;
     }
 
-    console.log(
-        `[Siren Voice] 🚀 发送给 MiniMax 的请求参数 (角色: ${config.char || "未知"}):`,
-        JSON.stringify(requestBody, null, 2),
-    );
+    // 内部：发一次请求并解析出 resData（不做业务码校验，交给外面判定是否需要兜底重试）
+    const sendOnce = async (body) => {
+        console.log(
+            `[Siren Voice] 🚀 发送给 MiniMax 的请求参数 (角色: ${config.char || "未知"}):`,
+            JSON.stringify(body, null, 2),
+        );
 
-    const response = await fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${config.api_key}`,
-        },
-        body: JSON.stringify(requestBody),
-    });
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${config.api_key}`,
+            },
+            body: JSON.stringify(body),
+        });
 
-    if (!response.ok) {
-        throw new Error(`MiniMax 请求失败: HTTP ${response.status}`);
+        if (!response.ok) {
+            throw new Error(`MiniMax 请求失败: HTTP ${response.status}`);
+        }
+
+        return response.json();
+    };
+
+    let resData = await sendOnce(requestBody);
+
+    // 🌟 情绪兜底：部分模型（如 speech-2.8）并不支持 whisper/calm/fluent 等情绪，
+    // MiniMax 会用 2013 直接拒掉整条请求（官方文档白名单与实际实现不一致）。
+    // 检测到「情绪不被支持」时，自动去掉 emotion 重试一次，保证语音照常生成（只是少了这句的情绪）。
+    if (
+        resData?.base_resp &&
+        resData.base_resp.status_code !== 0 &&
+        requestBody.voice_setting.emotion
+    ) {
+        const rejectedEmotion = requestBody.voice_setting.emotion;
+        const msg = String(resData.base_resp.status_msg || "");
+        const isEmotionRejected =
+            resData.base_resp.status_code === 2013 ||
+            msg.includes(rejectedEmotion) ||
+            /emotion|support/i.test(msg);
+
+        if (isEmotionRejected) {
+            console.warn(
+                `[Siren Voice] ⚠️ 当前模型 [${requestBody.model}] 不支持情绪 [${rejectedEmotion}]，已去掉情绪重试。`,
+            );
+            if (window.toastr) {
+                window.toastr.info(
+                    `当前模型不支持情绪「${rejectedEmotion}」，已忽略该情绪继续合成`,
+                    "MiniMax",
+                    { timeOut: 6000 },
+                );
+            }
+            delete requestBody.voice_setting.emotion;
+            resData = await sendOnce(requestBody);
+        }
     }
-
-    const resData = await response.json();
 
     // 校验 API 返回码
     if (resData.base_resp && resData.base_resp.status_code !== 0) {
