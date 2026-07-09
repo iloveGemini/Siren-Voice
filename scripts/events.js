@@ -1382,16 +1382,14 @@ function buildSpeakRegexes() {
       scope: "global",
       find_regex: `/<${tag}\\b([^>]*)>((?:(?!<(?:speak|inner|phone)\\b)[\\s\\S])*?)<\\/(?:${tag}|(?!(?:i|b|u|s|em|strong|span|a|p|br)\\b)[a-zA-Z0-9_-]+)>/gi`,
 
-      // 👇 主要修改这里：最外层加了一个 <span style="display: block; width: 100%;">，并在末尾加上 </span>
       replace_string:
-        `<span style="display: block; width: 100%;"><span class="siren-speak-card" data-siren-speak="1" data-tag="${tag}" data-raw-attrs='$1' tabindex="0" style="display: flex; width: fit-content; margin-top: 6px; margin-bottom: 6px;">
+        `<span class="siren-speak-line" style="display: block; width: 100%;"><span class="siren-speak-card" data-siren-speak="1" data-tag="${tag}" data-raw-attrs='$1' tabindex="0">
     <span class="siren-btn-wrap siren-play-wrap" data-siren-action="play" title="播放">
         <i class="fa-solid fa-circle-play"></i>
     </span>
     <span class="siren-btn-wrap siren-play-spinner-wrap" style="display: none;">
         <i class="fa-solid fa-spinner fa-spin"></i>
     </span>
-    ${iconHtml}
     <span class="siren-speak-text">$2</span>
     <span class="siren-raw-text" style="display: none;">$2</span> <span class="siren-btn-wrap siren-regen-wrap" data-siren-action="regenerate" title="重新生成">
         <i class="fa-solid fa-rotate-right"></i>
@@ -1399,7 +1397,7 @@ function buildSpeakRegexes() {
     <span class="siren-btn-wrap siren-regen-spinner-wrap" style="display: none;">
         <i class="fa-solid fa-spinner fa-spin"></i>
     </span>
-</span></span>`.replace(/\n\s+/g, ""), // 👈 注意这里也要多加一个 </span> 闭合外层标签
+</span></span>`.replace(/\n\s+/g, ""),
 
       source: {
         user_input: true,
@@ -1413,15 +1411,10 @@ function buildSpeakRegexes() {
     };
   };
 
-  const getIndicatorHtml = (faClass) =>
-    `<span class="siren-tag-icon" data-siren-icon="1" style="pointer-events: none; opacity: 0.85; margin-right: 6px;">
-            <i class="${faClass}"></i>
-        </span>`;
-
   return [
     createRegexConfig("speak", ""),
-    createRegexConfig("inner", getIndicatorHtml("fa-solid fa-comment")),
-    createRegexConfig("phone", getIndicatorHtml("fa-solid fa-phone")),
+    createRegexConfig("inner", ""),
+    createRegexConfig("phone", ""),
   ];
 }
 

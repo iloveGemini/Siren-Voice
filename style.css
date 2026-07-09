@@ -893,24 +893,42 @@
    ========================================== */
 [data-siren-speak="1"] {
   display: inline-flex !important;
-  width: fit-content !important;
+  width: auto !important;
   align-items: center;
-  gap: 12px;
-  margin: 6px 0;
-  padding: 8px 16px;
-  border-radius: 20px;
-  max-width: 90%;
-  /* 保留基础的位移过渡，把颜色的过渡也加上 */
-  transition: all 0.3s ease !important;
+  gap: 6px;
+  margin: 2px 0;
+  padding: 0;
+  border-radius: 0;
+  max-width: 100%;
+  transition: none !important;
   cursor: default;
-  background: rgba(30, 41, 59, 0.5);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
-/* 剥离写死的颜色，只保留悬浮时的上浮动作 */
+[data-siren-speak="1"].siren-speak-card {
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
 [data-siren-speak="1"]:hover {
-  transform: translateY(-2px);
-  /* 背景和边框颜色的 hover 效果移交给了 utils.js 里的主题 */
+  transform: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+[data-siren-speak="1"].siren-speak-card:hover {
+  transform: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
 /* 修复高度跳动：给按钮包裹层设置严格的固定宽高！ */
@@ -924,12 +942,18 @@
   border: none !important;
   box-shadow: none !important;
   /* 👇 核心修复：锁死宽高，不管里面是播放还是转圈，都不会撑大父级 */
-  width: 28px !important;
-  height: 28px !important;
+  width: 22px !important;
+  height: 22px !important;
   /* 👇 核心修复：强制加上 transition，确保旋转和放大平滑无比 */
   transition:
     transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     filter 0.3s ease !important;
+}
+
+[data-siren-speak="1"].siren-speak-card .siren-btn-wrap {
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 /* 按钮 hover 特效 */
@@ -950,22 +974,29 @@
 
 [data-siren-speak="1"] .fa-circle-play,
 [data-siren-speak="1"] .siren-play-spinner-wrap .fa-spinner {
-  font-size: 1.4em !important;
+  font-size: 1.15em !important;
 }
 
 [data-siren-speak="1"] .fa-rotate-right,
 [data-siren-speak="1"] .siren-regen-spinner-wrap .fa-spinner {
-  font-size: 1.2em !important;
+  font-size: 1em !important;
 }
 
 [data-siren-speak="1"] .siren-speak-text {
-  font-size: 0.95em;
+  font-size: inherit;
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.5;
+  line-height: inherit;
   flex-grow: 1;
   font-family: inherit;
-  letter-spacing: 0.5px;
+  letter-spacing: 0;
+}
+
+[data-siren-speak="1"].siren-speak-card .siren-speak-text {
+  color: inherit !important;
+  font: inherit !important;
+  font-weight: inherit !important;
+  text-shadow: none !important;
 }
 
 /* ==========================================
