@@ -1371,8 +1371,17 @@ export function applyMusicBeautifyCss() {
 // 🌟 正则构建器：语音系统 (Speak)
 // ==========================================
 function buildSpeakRegexes() {
-  const createRegexConfig = (tag, iconHtml) => {
+  const getIndicatorHtml = (faClass) =>
+    `<span class="siren-speak-kind-icon" aria-hidden="true"><i class="${faClass}"></i></span>`;
+
+  const createRegexConfig = (tag) => {
     const capitalizedTag = tag.charAt(0).toUpperCase() + tag.slice(1);
+    const iconHtml =
+      tag === "inner"
+        ? getIndicatorHtml("fa-solid fa-comment")
+        : tag === "phone"
+          ? getIndicatorHtml("fa-solid fa-phone")
+          : "";
 
     return {
       id: `siren-voice-${tag}-display`,
@@ -1383,20 +1392,16 @@ function buildSpeakRegexes() {
       find_regex: `/<${tag}\\b([^>]*)>((?:(?!<(?:speak|inner|phone)\\b)[\\s\\S])*?)<\\/(?:${tag}|(?!(?:i|b|u|s|em|strong|span|a|p|br)\\b)[a-zA-Z0-9_-]+)>/gi`,
 
       replace_string:
-        `<span class="siren-speak-line" style="display: block; width: 100%;"><span class="siren-speak-card" data-siren-speak="1" data-tag="${tag}" data-raw-attrs='$1' tabindex="0">
+        `<span class="siren-speak-line"><span class="siren-speak-inline" data-siren-speak="1" data-tag="${tag}" data-raw-attrs='$1' tabindex="0">
     <span class="siren-btn-wrap siren-play-wrap" data-siren-action="play" title="播放">
         <i class="fa-solid fa-circle-play"></i>
     </span>
     <span class="siren-btn-wrap siren-play-spinner-wrap" style="display: none;">
         <i class="fa-solid fa-spinner fa-spin"></i>
     </span>
+    ${iconHtml}
     <span class="siren-speak-text">$2</span>
-    <span class="siren-raw-text" style="display: none;">$2</span> <span class="siren-btn-wrap siren-regen-wrap" data-siren-action="regenerate" title="重新生成">
-        <i class="fa-solid fa-rotate-right"></i>
-    </span>
-    <span class="siren-btn-wrap siren-regen-spinner-wrap" style="display: none;">
-        <i class="fa-solid fa-spinner fa-spin"></i>
-    </span>
+    <span class="siren-raw-text" style="display: none;">$2</span>
 </span></span>`.replace(/\n\s+/g, ""),
 
       source: {
@@ -1412,9 +1417,9 @@ function buildSpeakRegexes() {
   };
 
   return [
-    createRegexConfig("speak", ""),
-    createRegexConfig("inner", ""),
-    createRegexConfig("phone", ""),
+    createRegexConfig("speak"),
+    createRegexConfig("inner"),
+    createRegexConfig("phone"),
   ];
 }
 

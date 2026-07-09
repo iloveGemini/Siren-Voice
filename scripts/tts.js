@@ -755,7 +755,7 @@ export async function updateTtsGlobalMacros(provider) {
 
 export function applyTtsBeautifyCss() {
   const settings = getSirenSettings();
-  const customCss = settings?.tts?.beautify_css ?? "";
+  const customCss = "";
 
   let styleTag = document.getElementById("siren-tts-beautify-style");
   if (!styleTag) {
