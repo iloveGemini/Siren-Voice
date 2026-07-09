@@ -90,20 +90,29 @@ export async function dispatchTtsGeneration(
   try {
     // 🌟 核心修改：把 forceRegen 直接传给底层的 fetchTtsBlobProvider
     // 底层函数自带了 if (!forceRegen && currentChatId) 的判断，会自动绕过缓存！
+    // 👇 最后的 true：单条点击/重生成时把失败原因用 toastr 弹出来（场景批量预加载保持静默）
     const blob = await fetchTtsBlobProvider(
       speakObj,
       floorId,
       provider,
       ttsSettings,
       forceRegen,
+      true,
     );
 
     if (blob) {
       // 生成成功后，推入播放队列
       enqueueTTSBlob(blob, speakObj);
     }
+    return blob;
   } catch (error) {
     console.error(`[Siren Voice][Router] ❌ ${provider} 分发失败:`, error);
+    if (window.toastr) {
+      window.toastr.error(String(error?.message || error), "语音生成失败", {
+        timeOut: 9000,
+      });
+    }
+    return null;
   }
 }
 
@@ -234,6 +243,7 @@ export async function fetchTtsBlobProvider(
   provider,
   ttsSettings,
   forceRegen = false,
+  notifyError = false,
 ) {
   try {
     const context = SillyTavern.getContext();
@@ -281,6 +291,9 @@ export async function fetchTtsBlobProvider(
       console.log(
         `[Siren Voice][预加载] ⚠️ 文本清洗后为空，跳过 TTS。原文本: ${speakObj.text}`,
       );
+      if (notifyError && window.toastr) {
+        window.toastr.warning("清洗后没有可朗读的文本，已跳过生成", "语音");
+      }
       return null;
     }
 
@@ -368,6 +381,11 @@ export async function fetchTtsBlobProvider(
     return blob;
   } catch (err) {
     console.error(`[Siren Voice][预加载] ❌ ${provider} 请求失败:`, err);
+    if (notifyError && window.toastr) {
+      window.toastr.error(String(err?.message || err), `${provider} 语音生成失败`, {
+        timeOut: 9000,
+      });
+    }
     return null;
   }
 }

@@ -271,7 +271,95 @@ function fastCleanSpeakText(card) {
 /**
  * 绑定语音条 DOM 事件 (基于隐藏节点数据源)，并动态清洗 UI 显示文本
  */
+function getOriginalMarkdownForFloor(floor) {
+  if (floor === null || floor === undefined) return "";
+
+  const context = SillyTavern.getContext();
+  if (context?.chat?.[floor]?.mes) return context.chat[floor].mes;
+
+  if (window.TavernHelper) {
+    const directMessages = window.TavernHelper.getChatMessages?.(Number(floor));
+    if (directMessages?.[0]?.message) return directMessages[0].message;
+
+    const msgs = window.TavernHelper.getChatMessages?.();
+    const msgObj =
+      msgs && msgs.find((m) => Number(m.message_id) === Number(floor));
+    if (msgObj?.message) return msgObj.message;
+  }
+
+  return "";
+}
+
+function getOriginalSpeakMatchesFromMarkdown(originalMarkdown) {
+  if (!originalMarkdown) return [];
+
+  const regex =
+    /<(speak|inner|phone)\b([^>]*)>((?:(?!<(?:speak|inner|phone)\b)[\s\S])*?)<\/(?:\1|(?!(?:i|b|u|s|em|strong|span|a|p|br)\b)[a-zA-Z0-9_-]+)>/gi;
+  const matches = [];
+  let match;
+
+  while ((match = regex.exec(originalMarkdown)) !== null) {
+    matches.push({
+      tag: (match[1] || "speak").toLowerCase(),
+      attrs: match[2] || "",
+      text: match[3] || "",
+    });
+  }
+
+  return matches;
+}
+
+function cleanSpeakDisplayText(rawText) {
+  let cleanDisplay = String(rawText || "")
+    .replace(/\{\{[\s\S]*?\}\}/g, "")
+    .trim();
+  cleanDisplay = cleanDisplay.replace(/<\/?(?!br\b)[a-z0-9]+[^>]*>/gi, "");
+  cleanDisplay = stripParentheticalAsides(cleanDisplay);
+  cleanDisplay = stripWrappingPunctuation(cleanDisplay);
+  return cleanDisplay;
+}
+
+function hydrateSpeakCardsFromOriginal(root = document) {
+  const messages =
+    root instanceof Element && root.matches?.(".mes")
+      ? [root]
+      : Array.from(root.querySelectorAll?.(".mes") || []);
+
+  messages.forEach((mes) => {
+    const cards = Array.from(mes.querySelectorAll('[data-siren-speak="1"]'));
+    if (!cards.length) return;
+
+    const floor = getMessageIdFromElement(mes);
+    const matches = getOriginalSpeakMatchesFromMarkdown(
+      getOriginalMarkdownForFloor(floor),
+    );
+    if (!matches.length) return;
+
+    cards.forEach((card, index) => {
+      const original = matches[index];
+      if (!original) return;
+
+      card.dataset.sirenRawIndex = String(index);
+      card.dataset.tag = original.tag;
+      card.dataset.rawAttrs = original.attrs;
+      card.dataset.rawText = original.text;
+
+      const rawSpan = card.querySelector(
+        ".siren-raw-text, .custom-siren-raw-text",
+      );
+      if (rawSpan) rawSpan.textContent = original.text;
+
+      const textSpan = card.querySelector(
+        ".siren-speak-text, .custom-siren-speak-text",
+      );
+      if (textSpan) textSpan.innerHTML = cleanSpeakDisplayText(original.text);
+    });
+  });
+}
+
 function bindInlineSpeakCards(root = document) {
+  hydrateSpeakCardsFromOriginal(root);
+
   const cards = root.querySelectorAll('[data-siren-speak="1"]');
   if (!cards.length) return;
 
@@ -1515,6 +1603,9 @@ async function handleInlineSpeakPlay(speakObj, cardElement, action = "play") {
   // 强制给浏览器一帧的时间把 loading 状态画出来
   await new Promise((resolve) => requestAnimationFrame(resolve));
 
+  // 🌟 点击即时反馈：常驻的“正在生成”提示，走完（成功或失败）后在 finally 里清掉
+  let genToast = null;
+
   try {
     if (action === "play") {
       const cachedRecord = await findExactTtsRecord(
@@ -1537,6 +1628,13 @@ async function handleInlineSpeakPlay(speakObj, cardElement, action = "play") {
     }
 
     const isRegen = action === "regenerate";
+    if (window.toastr) {
+      genToast = window.toastr.info(
+        isRegen ? "🎙️ 正在重新生成语音…" : "🎙️ 正在生成语音…",
+        "",
+        { timeOut: 0, extendedTimeOut: 0 },
+      );
+    }
     await dispatchTtsGeneration(
       speakObj,
       floor,
@@ -1546,5 +1644,6 @@ async function handleInlineSpeakPlay(speakObj, cardElement, action = "play") {
     );
   } finally {
     cardElement.classList.remove(loadingClass);
+    if (window.toastr && genToast) window.toastr.clear(genToast);
   }
 }
